@@ -1,11 +1,11 @@
 import { useMutation, useQuery } from "@apollo/client"
 import { ALL_AUTHORS, EDIT_AUTHOR } from "../query"
 import { useState } from "react"
-import SelectAuthor from './SelectAuthor'
+
 
 const Authors = () => {
 
-  const [name, setName] = useState('')
+  const [name, setName] = useState('Robert Martin')
   const [born, setBorn] = useState('')
 
   const handleName = ({ target }) => { setName(target.value) }
@@ -18,7 +18,6 @@ const Authors = () => {
     event.preventDefault()
     updater({ variables: { name, setBornTo: +born } })
 
-    setName('')
     setBorn('')
   }
 
@@ -55,9 +54,9 @@ const Authors = () => {
               <select
                 value={name}
                 onChange={handleName}>
-                 
-                  {data.allAuthors.map((a) => <SelectAuthor key={a.name} name={a.name}/>)}
-                </select>
+                {data.allAuthors.map(a =>
+                  <option value={a.name} key={a.id}>{a.name}</option>)}
+              </select>
             </label>
           </div>
           <div>
