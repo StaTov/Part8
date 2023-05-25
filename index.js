@@ -1,10 +1,11 @@
 const { ApolloServer } = require("@apollo/server");
-const { startStandaloneServer } = require("@apollo/server/standalone");
-const { v1: uuid } = require('uuid')
+const { GraphQLError } = require('graphql')
 const mongoose = require('mongoose')
+const { startStandaloneServer } = require("@apollo/server/standalone");
 const Book = require('./models/book')
 const Author = require('./models/author')
-const { GraphQLError } = require('graphql')
+const User = require('./models/user')
+const bcrypt = require('bcrypt')
 require('dotenv').config()
 
 const MONGODB_URI = process.env.MONGODB_URI
@@ -28,6 +29,15 @@ const typeDefs = `
        born: Int
        bookCount: Int
 }
+    type User {
+        username: String!
+        passwordHash: String!
+        favoriteGenre: String!
+        id: ID!
+}
+    type Token {
+        value: String!
+    }
     type Book {
        title: String!
        published: Int
@@ -36,14 +46,24 @@ const typeDefs = `
        id: ID!    
 }
     type Query {
+       me: User
        authorCount: Int!
        bookCount: Int!
        allBooks(author: String, genres: String): [Book!]
        allAuthors: [Author!]!
 }
     type Mutation {
+        createUser(
+            username: String!
+            password: String!
+            favoriteGenre: String!
+            ): User
+        login(
+            username: String!
+            password: String!
+        ): Token
         addAuthor(
-            name: String!
+            username: String!
             born: Int
         ): Author!
         addBook(
@@ -90,6 +110,25 @@ const resolvers = {
         }
     },
     Mutation: {
+        login: async (root, args) => {
+
+        },
+        createUser: async (root, args) => {
+            const saltRounds = 10
+            const passwordHash = await bcrypt.hash(args.password, saltRounds)
+
+            const newUser = new User({ ...args, passwordHash })
+
+            return newUser.save()
+                .catch(error => {
+                    throw new GraphQLError('Failed field', {
+                        extensions: {
+                            code: 'BAD_USER_INPUT',
+                            error
+                        }
+                    })
+                })
+        },
         addBook: async (root, args) => {
             let id
             const author = await Author.findOne({ name: args.author })
@@ -100,7 +139,7 @@ const resolvers = {
                 id = author.id
             } else {
                 const newAuthor = new Author({ name: args.author })
-          
+
                 try {
                     await newAuthor.save()
                     id = newAuthor._id
@@ -114,6 +153,8 @@ const resolvers = {
                     })
                 }
             }
+
+            // create new book
             const newBook = new Book({ ...args, author: id })
 
             try {
