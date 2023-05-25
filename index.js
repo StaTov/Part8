@@ -83,6 +83,9 @@ const typeDefs = `
 
 const resolvers = {
     Query: {
+        me: (root, args, context) => {
+            context.currentUser
+        },
         authorCount: async () => Author.collection.countDocuments(),
 
         bookCount: () => Book.collection.countDocuments(),
@@ -126,7 +129,7 @@ const resolvers = {
                 id: user._id
             }
 
-            return {value: jwt.sign(userForToken, process.env.JWT_SECRET)}
+            return { value: jwt.sign(userForToken, process.env.JWT_SECRET) }
         },
         createUser: async (root, args) => {
             const saltRounds = 10
@@ -144,7 +147,15 @@ const resolvers = {
                     })
                 })
         },
-        addBook: async (root, args) => {
+        addBook: async (root, args, { currentUser }) => {
+            if (!currentUser) {
+                throw new GraphQLError('not authenticated', {
+                    extensions: {
+                        code: 'BAD_USER_INPUT'
+                    }
+                })
+            }
+
             let id
             const author = await Author.findOne({ name: args.author })
 
@@ -187,7 +198,14 @@ const resolvers = {
             return await Book.findOne({ title: args.title }).populate('author')
 
         },
-        editAuthor: async (root, args) => {
+        editAuthor: async (root, args, {currentUser}) => {
+            if (!currentUser) {
+                throw new GraphQLError('not authenticated', {
+                    extensions: {
+                        code: 'BAD_USER_INPUT'
+                    }
+                })
+            }
             return await Author.findOneAndUpdate({ name: args.name }, { born: args.setBornTo }, { new: true })
         }
     }
@@ -203,6 +221,18 @@ const PORT = process.env.PORT
 
 startStandaloneServer(server, {
     listen: { port: PORT },
+    context: async ({ req, res }) => {
+        const auth = req ? req.headers.authorization : null
+        if (auth && auth.startsWith('Bearer ')) {
+            const decodedToken = jwt.verify(
+                auth.substring(7), process.env.JWT_SECRET
+            )
+            const currentUser = await User
+                .findById(decodedToken.id)
+
+            return { currentUser }
+        }
+    },
 }).then(({ url }) => {
     console.log(`Server ready at ${url}`);
 });
