@@ -6,6 +6,7 @@ const Book = require('./models/book')
 const Author = require('./models/author')
 const User = require('./models/user')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 require('dotenv').config()
 
 const MONGODB_URI = process.env.MONGODB_URI
@@ -111,7 +112,21 @@ const resolvers = {
     },
     Mutation: {
         login: async (root, args) => {
+            const user = await User.findOne({ username: args.username })
+            const checkPassword = await bcrypt.compare(args.password, user.passwordHash)
 
+            if (!user || !checkPassword) {
+                throw new GraphQLError('wrong credentials', {
+                    extensions: 'BAD_USER_INPUT'
+                })
+            }
+
+            userForToken = {
+                username: user.username,
+                id: user._id
+            }
+
+            return {value: jwt.sign(userForToken, process.env.JWT_SECRET)}
         },
         createUser: async (root, args) => {
             const saltRounds = 10
