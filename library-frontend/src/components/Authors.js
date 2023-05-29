@@ -5,14 +5,17 @@ import { useState } from "react"
 
 const Authors = () => {
 
+  const { loading, error, data } = useQuery(ALL_AUTHORS)
   const [name, setName] = useState('Robert Martin')
   const [born, setBorn] = useState('')
 
   const handleName = ({ target }) => { setName(target.value) }
   const handleBorn = ({ target }) => { setBorn(target.value) }
 
-  const { data, loading } = useQuery(ALL_AUTHORS)
-  const [updater] = useMutation(EDIT_AUTHOR)
+
+  const [updater] = useMutation(EDIT_AUTHOR, {
+    refetchQueries: [ALL_AUTHORS]
+  })
 
   const updateAuthor = event => {
     event.preventDefault()
@@ -20,9 +23,14 @@ const Authors = () => {
 
     setBorn('')
   }
-
+  if (!data) {
+    return null
+  }
   if (loading) {
     return <div>loading...</div>
+  }
+  if (error) {
+    return <div>{error.message}</div>
   }
   return (
     <div>

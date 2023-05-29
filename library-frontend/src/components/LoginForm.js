@@ -2,20 +2,25 @@
 import { useEffect, useState } from "react"
 import { useMutation } from "@apollo/client"
 import { LOGIN } from "../query"
+import { useNavigate } from "react-router-dom"
 
-const LoginForm = ({setToken}) => {
+const LoginForm = ({ setToken }) => {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
+    const navigate = useNavigate()
+    
     const [getToken, { data, error }] = useMutation(LOGIN)
+
 
     useEffect(() => {
         if (data) {
             const token = data.login.value
             setToken(token)
             localStorage.setItem('booksApp-user-token', token)
+            
+            navigate('/books')
         }
-    
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data])
 
     async function handleSubmit(event) {
@@ -25,6 +30,9 @@ const LoginForm = ({setToken}) => {
         if (error)
             console.log(error.graphQLErrors[0].message)
 
+        setUsername('')
+        setPassword('')
+        
     }
 
     return (

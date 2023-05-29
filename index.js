@@ -83,16 +83,14 @@ const typeDefs = `
 
 const resolvers = {
     Query: {
-        me: (root, args, context) => {
-            context.currentUser
-        },
+        me: (root, args, { currentUser }) => currentUser,
         authorCount: async () => Author.collection.countDocuments(),
 
         bookCount: () => Book.collection.countDocuments(),
 
         allBooks: async (root, args) => {
 
-            const books = await Book.find({}).populate('author', { name: 1, id: 1 })
+            const books = await Book.find({}).populate('author', { name: 1, id: 1, born: 1 })
 
             let filtredBooksByAuthor = !args.author
                 ? books
@@ -198,7 +196,7 @@ const resolvers = {
             return await Book.findOne({ title: args.title }).populate('author')
 
         },
-        editAuthor: async (root, args, {currentUser}) => {
+        editAuthor: async (root, args, { currentUser }) => {
             if (!currentUser) {
                 throw new GraphQLError('not authenticated', {
                     extensions: {
