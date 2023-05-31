@@ -6,21 +6,27 @@ import AddBook from './components/AddBook'
 import LoginForm from './components/LoginForm'
 import Recommend from './components/Recommend'
 import LogOut from './components/LogOut'
-import { useQuery } from '@apollo/client'
-import { ME } from './query'
+import { useApolloClient, useQuery, useSubscription } from '@apollo/client'
+import { ME, BOOK_ADDED, ALL_BOOKS } from './query'
+import { updateCache } from './helper'
+
+
 
 
 
 const App = () => {
+  const client = useApolloClient()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
+
+
 
   const { data } = useQuery(ME, {
     skip: !token
   })
 
 
-  console.log('me', user)
+
   useEffect(() => {
     const userToken = localStorage.getItem('booksApp-user-token')
     if (userToken) setToken(userToken)
@@ -30,7 +36,14 @@ const App = () => {
     if (data) setUser(data.me)
   }, [data])
 
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data }) => {
+      const addedBook = data.data.bookAdded
+      window.alert(`${addedBook} added`)
+      updateCache(client.cache, { query: ALL_BOOKS }, addedBook)
 
+    }
+  })
 
 
   return (
@@ -53,7 +66,7 @@ const App = () => {
         <Route path='/books' element={<Books />} />
         <Route path='/addbook' element={<AddBook />} />
         <Route path='/login' element={<LoginForm setToken={setToken} />} />
-        <Route path='/recommend' element={<Recommend user={user}/>} />
+        <Route path='/recommend' element={<Recommend user={user} />} />
       </Routes>
     </div>
   )

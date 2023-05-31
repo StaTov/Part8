@@ -6,7 +6,15 @@ const jwt = require('jsonwebtoken')
 const { GraphQLError } = require('graphql')
 require('dotenv').config()
 
+const { PubSub } = require('graphql-subscriptions')
+const pubsub = new PubSub()
+
 const resolvers = {
+    Subscription: {
+        bookAdded: {
+            subscribe: () => pubsub.asyncIterator('BOOK_ADDED')
+        }
+    },
     Query: {
         me: (root, args, { currentUser }) => currentUser,
         authorCount: async () => Author.collection.countDocuments(),
@@ -28,7 +36,10 @@ const resolvers = {
             return filtredBooksByGenres
         },
 
-        allAuthors: async () => Author.find({}),
+        allAuthors: async () => {
+        console.log('Author.find')
+        return Author.find({})
+        },
     },
     Author: {
         bookCount: async (root) => {
@@ -118,8 +129,12 @@ const resolvers = {
                 })
             }
 
-            return await Book.findOne({ title: args.title }).populate('author')
+            const resultBook = await Book.findOne({ title: args.title }).populate('author')
 
+            //публикация уведомеления всем подписчикам
+            pubsub.publish('BOOK_ADDED', { bookAdded: resultBook })
+
+            return resultBook
         },
         editAuthor: async (root, args, { currentUser }) => {
             if (!currentUser) {
